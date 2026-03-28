@@ -50,20 +50,21 @@ Target F1 score on held-out test images: ≥ 85%.
 ## Directory Structure
 
 ```
-scripts/
-  prepare_dataset.py   # Extract crops from Roboflow annotations
-  hog_utils.py         # Python HOG (matches C++ exactly — used for validation)
-  train_svm.py         # Train LinearSVC, hard negative mining, export weights
-src/
-  hog.cpp / hog.h      # Manual HOG extraction
-  svm.cpp / svm.h      # Weight loading and dot product inference
-  sliding_window.cpp   # Sliding window loop over full frame
-  nms.cpp / nms.h      # Non-maximum suppression (CPU)
-  main.cpp             # Entry point, timing, output
-include/
-  types.h              # BoundingBox struct and shared types
-test/
-  test_hog.cpp         # C++ vs. Python HOG correctness validation
+project/
+  scripts/
+    prepare_dataset.py   # Extract crops from Roboflow annotations
+    hog_utils.py         # Python HOG (matches C++ exactly — used for validation)
+    train_svm.py         # Train LinearSVC, hard negative mining, export weights
+  src/
+    hog.cpp / hog.h      # Manual HOG extraction
+    svm.cpp / svm.h      # Weight loading and dot product inference
+    sliding_window.cpp   # Sliding window loop over full frame
+    nms.cpp / nms.h      # Non-maximum suppression (CPU)
+    main.cpp             # Entry point, timing, output
+  include/
+    types.h              # BoundingBox struct and shared types
+  test/
+    test_hog.cpp         # C++ vs. Python HOG correctness validation
 CMakeLists.txt
 weights.bin            # Exported SVM weights (generated, not checked in)
 bias.txt               # Exported SVM bias scalar (generated, not checked in)
