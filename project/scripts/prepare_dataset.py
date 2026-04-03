@@ -6,7 +6,7 @@ Label format per line: <class_id> <cx_norm> <cy_norm> <w_norm> <h_norm>
 
 Usage:
     python scripts/prepare_dataset.py \
-        --data_dir data/roboflow \
+        --data_dir data/roboflow/train/images\
         --out_dir  data/crops \
         --neg_ratio 2
 
@@ -125,10 +125,14 @@ def main():
     data_dir = Path(args.data_dir)
     out_dir  = Path(args.out_dir)
 
+    # Make the output directory
+    out_dir.mkdir(parents=True, exist_ok=True)
+
     # Find all images (support common splits in subfolders)
     image_paths = sorted(data_dir.rglob("*.jpg")) + \
                   sorted(data_dir.rglob("*.jpeg")) + \
-                  sorted(data_dir.rglob("*.png"))
+                  sorted(data_dir.rglob("*.png")) + \
+                  sorted(data_dir.rglob("*.bmp"))
     image_paths = [p for p in image_paths if "labels" not in str(p)]
 
     if not image_paths:
