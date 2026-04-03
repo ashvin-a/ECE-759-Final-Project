@@ -2,7 +2,7 @@
 
 **ECE 759 — Parallel Programming Final Project**
 
-Parallelized object detection pipeline using Histogram of Oriented Gradients (HOG) and a Linear SVM, targeting Martian rock detection from rover imagery. Benchmarks sequential C++, OpenMP, and CUDA implementations across resolutions.
+Parallelized object detection pipeline using Histogram of Oriented Gradients (HOG) and a Linear SVM, targeting Martian rock detection from **Space Rover** imagery. Benchmarks sequential C++, OpenMP, and CUDA implementations across resolutions.
 
 ---
 
