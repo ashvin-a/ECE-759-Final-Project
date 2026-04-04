@@ -8,7 +8,6 @@
 .*/
 *l.txt
 build/
-data/
 env/
 __pycache__/
 
