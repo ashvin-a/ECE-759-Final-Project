@@ -6,7 +6,7 @@ Label format per line: <class_id> <cx_norm> <cy_norm> <w_norm> <h_norm>
 
 Usage:
     python scripts/prepare_dataset.py \
-        --data_dir data/roboflow/train/images\
+        --data_dir data/roboflow/train/\
         --out_dir  data/crops \
         --neg_ratio 2
 
@@ -28,15 +28,15 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-WIN = 64
+WIN = 256
 TRAIN_FRAC = 0.8
 
 
 def parse_args():
     p = argparse.ArgumentParser()
-    p.add_argument("--data_dir",  required=True,
+    p.add_argument("--data_dir",  default="project/data/roboflow/train/",
                    help="Root of Roboflow dataset (contains images/ and labels/)")
-    p.add_argument("--out_dir",   required=True,
+    p.add_argument("--out_dir",   default="project/data/crops",
                    help="Output directory for crops")
     p.add_argument("--neg_ratio", type=int, default=2,
                    help="Negative crops per positive (default 2)")

@@ -29,16 +29,17 @@ from sklearn.metrics import classification_report, f1_score
 
 # Add scripts/ to path so we can import hog_utils
 sys.path.insert(0, str(Path(__file__).parent))
-from hog_utils import extract_hog, WIN
+from hog_utils import extract_hog, WIN_H
 
-SLIDE_STRIDE = 8
+SLIDE_STRIDE = 64
+WIN = WIN_H # Both height and width are the same. So just using WIN
 
 
 def parse_args():
     p = argparse.ArgumentParser()
-    p.add_argument("--crops_dir",      required=True,
+    p.add_argument("--crops_dir",      default="project/data/crops",
                    help="Directory produced by prepare_dataset.py")
-    p.add_argument("--neg_images_dir", default=None,
+    p.add_argument("--neg_images_dir", default="project/data/desert",
                    help="Directory of full images known to contain NO rocks "
                         "(for hard negative mining). If omitted, HNM is skipped.")
     p.add_argument("--out_dir",        default=".",
