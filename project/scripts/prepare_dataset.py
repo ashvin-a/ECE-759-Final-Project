@@ -56,7 +56,12 @@ def iou(a, b):
 
 
 def load_boxes_yolo(label_path: Path, img_w: int, img_h: int):
-    """Return list of [x1,y1,x2,y2] pixel boxes from a YOLO label file."""
+    """Return list of [x1,y1,x2,y2] pixel boxes from a YOLO label file.
+
+    Supports both standard YOLO format (class cx cy w h) and polygon/OBB
+    format (class x1 y1 x2 y2 ... xn yn). For polygons, the axis-aligned
+    bounding box is computed from the min/max of all vertices.
+    """
     boxes = []
     if not label_path.exists():
         return boxes
@@ -64,33 +69,45 @@ def load_boxes_yolo(label_path: Path, img_w: int, img_h: int):
         parts = line.strip().split()
         if len(parts) < 5:
             continue
-        cx, cy, w, h = float(parts[1]), float(parts[2]), float(parts[3]), float(parts[4])
-        x1 = int((cx - w / 2) * img_w)
-        y1 = int((cy - h / 2) * img_h)
-        x2 = int((cx + w / 2) * img_w)
-        y2 = int((cy + h / 2) * img_h)
+        coords = list(map(float, parts[1:]))
+        if len(coords) == 4:
+            # Standard YOLO: cx cy w h (normalized)
+            cx, cy, w, h = coords
+            x1 = int((cx - w / 2) * img_w)
+            y1 = int((cy - h / 2) * img_h)
+            x2 = int((cx + w / 2) * img_w)
+            y2 = int((cy + h / 2) * img_h)
+        else:
+            # Polygon/OBB: x1 y1 x2 y2 ... xn yn (normalized)
+            xs = coords[0::2]
+            ys = coords[1::2]
+            x1 = int(min(xs) * img_w)
+            y1 = int(min(ys) * img_h)
+            x2 = int(max(xs) * img_w)
+            y2 = int(max(ys) * img_h)
         x1, y1 = max(0, x1), max(0, y1)
         x2, y2 = min(img_w, x2), min(img_h, y2)
-        if x2 - x1 >= 16 and y2 - y1 >= 16:
+        if x2 - x1 >= 24 and y2 - y1 >= 24:
             boxes.append([x1, y1, x2, y2])
     return boxes
 
 
 def extract_positive(img, box):
-    """Center-crop or resize a labeled bounding box to WIN x WIN."""
+    """Extract tight bounding box with context padding, resize to WIN x WIN."""
     x1, y1, x2, y2 = box
-    cx, cy = (x1 + x2) // 2, (y1 + y2) // 2
-    half = WIN // 2
-    lx = max(0, cx - half); rx = lx + WIN
-    ly = max(0, cy - half); ry = ly + WIN
+    bw, bh = x2 - x1, y2 - y1
+    # Add 20% context padding so the rock doesn't fill the window edge-to-edge
+    pad_x = max(int(bw * 0.2), 4)
+    pad_y = max(int(bh * 0.2), 4)
     H, W = img.shape[:2]
-    if rx > W: lx, rx = W - WIN, W
-    if ry > H: ly, ry = H - WIN, H
-    lx, ly = max(0, lx), max(0, ly)
+    lx = max(0, x1 - pad_x)
+    ly = max(0, y1 - pad_y)
+    rx = min(W, x2 + pad_x)
+    ry = min(H, y2 + pad_y)
     crop = img[ly:ry, lx:rx]
-    if crop.shape[0] != WIN or crop.shape[1] != WIN:
-        crop = cv2.resize(crop, (WIN, WIN), interpolation=cv2.INTER_AREA)
-    return crop
+    if crop.size == 0:
+        crop = img[max(0, y1):max(1, y2), max(0, x1):max(1, x2)]
+    return cv2.resize(crop, (WIN, WIN), interpolation=cv2.INTER_AREA)
 
 
 def sample_negatives(img, boxes, n, rng):
