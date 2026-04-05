@@ -36,7 +36,7 @@ Unsigned gradients are used because rock shape is invariant to sun angle — the
 
 ### Dataset
 
-Roboflow "Robotic Arm Dataset - Rocks" (pre-labeled bounding boxes).
+Roboflow [Rock Detection](https://app.roboflow.com/roboticarmdataset/rock-detection-crvsc/browse?queryText=&pageSize=50&startingIndex=0&browseQuery=true) (pre-labeled bounding boxes).
 
 - Positive crops: 64x64 rock regions from labeled bounding boxes
 - Negative crops: random 64x64 regions from images with no rock annotations
