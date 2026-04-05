@@ -39,15 +39,13 @@ def parse_args():
     p = argparse.ArgumentParser()
     p.add_argument("--crops_dir",      default="project/data/crops",
                    help="Directory produced by prepare_dataset.py")
-    p.add_argument("--neg_images_dir", default="project/data/desert",
+    p.add_argument("--neg_images_dir", default=None,
                    help="Directory of full images known to contain NO rocks "
                         "(for hard negative mining). If omitted, HNM is skipped.")
-    p.add_argument("--out_dir",        default=".",
+    p.add_argument("--out_dir",        default="project/models",
                    help="Where to write weights.bin and bias.txt")
-    p.add_argument("--no-hnm",         action="store_true",
-                   help="Skip hard negative mining")
-    p.add_argument("--C",              type=float, default=0.01,
-                   help="LinearSVC regularization (default 0.01)")
+    p.add_argument("--no-hnm",         action="store_true")
+    p.add_argument("--C",              type=float, default=0.01)
     p.add_argument("--max_iter",       type=int, default=10000)
     p.add_argument("--seed",           type=int, default=42)
     return p.parse_args()
@@ -102,11 +100,12 @@ def mine_hard_negatives(neg_image_dir: Path, clf, max_per_image: int = 50):
 
     print(f"  Mining hard negatives from {len(image_files)} images...")
     hn_feats = []
-    for img_path in image_files:
+    for img_path in image_files[:50]:
         img = cv2.imread(str(img_path))
         if img is None:
             continue
-        dets = sliding_window_detections(img, clf, threshold=0.0)
+        img = cv2.resize(img, (640, 480))
+        dets = sliding_window_detections(img, clf, threshold=-0.5)
         # Sort by score descending, keep worst offenders
         dets.sort(key=lambda d: d[2], reverse=True)
         for x, y, _ in dets[:max_per_image]:
@@ -143,7 +142,8 @@ def main():
     #  Base model 
     print("\nTraining base LinearSVC...")
     t0  = time.time()
-    clf = LinearSVC(C=args.C, max_iter=args.max_iter, random_state=args.seed)
+    clf = LinearSVC(C=args.C, max_iter=args.max_iter, random_state=args.seed,
+                    class_weight="balanced", verbose=1)
     clf.fit(X_train, y_train)
     print(f"  Done in {time.time()-t0:.1f}s")
 
@@ -157,7 +157,8 @@ def main():
             y_train = np.concatenate([y_train, y_hn])
             print(f"  Retraining with {len(X_train)} total samples...")
             t0  = time.time()
-            clf = LinearSVC(C=args.C, max_iter=args.max_iter, random_state=args.seed)
+            clf = LinearSVC(C=args.C, max_iter=args.max_iter, random_state=args.seed,
+                            class_weight="balanced")
             clf.fit(X_train, y_train)
             print(f"  Retrained in {time.time()-t0:.1f}s")
     else:
