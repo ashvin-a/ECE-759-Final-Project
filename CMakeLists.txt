@@ -26,6 +26,9 @@ add_compile_options(
 
 # OpenCV — image I/O and video capture only
 find_package(OpenCV REQUIRED COMPONENTS core imgproc imgcodecs videoio highgui)
+
+# OpenMP — CPU parallelism for Phase 2A
+find_package(OpenMP REQUIRED)
 message(STATUS "OpenCV version: ${OpenCV_VERSION}")
 
 include_directories(project/include)
@@ -36,11 +39,12 @@ set(DETECTOR_SOURCES
     project/src/svm.cpp
     project/src/nms.cpp
     project/src/sliding_window.cpp
+    project/src/sliding_window_omp.cpp
     project/src/main.cpp
 )
 
 add_executable(hog_detector ${DETECTOR_SOURCES})
-target_link_libraries(hog_detector PRIVATE ${OpenCV_LIBS})
+target_link_libraries(hog_detector PRIVATE ${OpenCV_LIBS} OpenMP::OpenMP_CXX)
 
 # ── HOG correctness test ──────────────────────────────────────────────────────
 add_executable(test_hog project/test/test_hog.cpp project/src/hog.cpp project/src/svm.cpp)
