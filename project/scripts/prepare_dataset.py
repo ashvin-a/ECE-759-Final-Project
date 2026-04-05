@@ -28,7 +28,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-WIN = 256
+WIN = 64
 TRAIN_FRAC = 0.8
 
 

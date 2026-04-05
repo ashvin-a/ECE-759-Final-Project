@@ -31,7 +31,7 @@ from sklearn.metrics import classification_report, f1_score
 sys.path.insert(0, str(Path(__file__).parent))
 from hog_utils import extract_hog, WIN_H
 
-SLIDE_STRIDE = 64
+SLIDE_STRIDE = 8
 WIN = WIN_H # Both height and width are the same. So just using WIN
 
 

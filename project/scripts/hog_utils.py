@@ -10,8 +10,8 @@ Used for:
 import numpy as np
 
 # Must match include/types.h
-WIN_W        = 256
-WIN_H        = 256
+WIN_W        = 64
+WIN_H        = 64
 CELL_SIZE    = 8
 BLOCK_SIZE   = 2    # in cells
 NBINS        = 9
