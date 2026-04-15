@@ -101,9 +101,18 @@ int main(int argc, char* argv[])
               << "  bias=" << svm.bias() << "\n";
 
     // Open input
-    // Try as video first; if VideoCapture fails, treat as single image.
-    cv::VideoCapture cap(input_path);
-    bool is_video = cap.isOpened();
+    // Try as image first; only open VideoCapture if imread fails.
+    cv::Mat static_img = cv::imread(input_path);
+    bool is_video = static_img.empty();
+
+    cv::VideoCapture cap;
+    if (is_video) {
+        cap.open(input_path);
+        if (!cap.isOpened()) {
+            std::cerr << "ERROR: Could not open input as image or video: " << input_path << "\n";
+            return 1;
+        }
+    }
 
     // Open output writer (optional)
     cv::VideoWriter writer;
@@ -159,19 +168,24 @@ int main(int argc, char* argv[])
             std::cout << "Video ended after " << frame_count << " frames.\n";
     } else {
         // Single image — run BENCHMARK_FRAMES times for stable timing
-        cv::Mat img = cv::imread(input_path);
-        if (img.empty()) {
-            std::cerr << "ERROR: Could not read input: " << input_path << "\n";
-            return 1;
-        }
+        cv::Mat& img = static_img;
         std::cout << "Image mode: running " << BENCHMARK_FRAMES
                   << " iterations for benchmark.\n";
+        cv::Mat annotated;
         for (int i = 0; i < BENCHMARK_FRAMES; ++i) {
             cv::Mat copy = img.clone();
             process_frame(copy);
+            if (i == 0) annotated = copy;  // keep first annotated frame for output
         }
-        if (!output_path.empty())
-            cv::imwrite(output_path, img);  // save the annotated image
+        if (!output_path.empty()) {
+            // Ensure standard 3-channel BGR before writing
+            if (annotated.channels() == 4)
+                cv::cvtColor(annotated, annotated, cv::COLOR_BGRA2BGR);
+            if (!cv::imwrite(output_path, annotated))
+                std::cerr << "WARNING: Failed to write output image: " << output_path << "\n";
+            else
+                std::cout << "Saved annotated image: " << output_path << "\n";
+        }
     }
 
     print_stats(latencies);
