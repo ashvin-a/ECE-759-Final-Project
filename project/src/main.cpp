@@ -17,6 +17,7 @@
 #include "hog.h"
 #include "nms.h"
 #include "sliding_window.h"
+#include "sliding_window_cuda.h"
 #include "svm.h"
 #include "types.h"
 
@@ -63,13 +64,13 @@ static void print_stats(const std::vector<double>& latencies_ms)
 static void usage(const char* prog)
 {
     std::fprintf(stderr,
-        "Usage: %s <input> <weights.bin> <bias.txt> [output_video] [threshold] [--mode seq|omp]\n"
+        "Usage: %s <input> <weights.bin> <bias.txt> [output] [threshold] [--mode seq|omp|cuda]\n"
         "  input        : path to video file or image\n"
         "  weights.bin  : binary float32 SVM weights (%d values)\n"
         "  bias.txt     : SVM bias scalar\n"
-        "  output_video : (optional) path to write annotated output (.mp4/.avi)\n"
+        "  output       : (optional) path to write annotated output (.mp4/.avi/.png)\n"
         "  threshold    : (optional) SVM decision threshold (default 0.0)\n"
-        "  --mode       : seq (sequential, default) or omp (OpenMP)\n",
+        "  --mode       : seq (sequential, default), omp (OpenMP), or cuda (GPU)\n",
         prog, HOG_FEAT_DIM);
 }
 
@@ -84,16 +85,22 @@ int main(int argc, char* argv[])
     const std::string weights_path = argv[2];
     const std::string bias_path    = argv[3];
     const std::string output_path  = (argc >= 5) ? argv[4] : "";
-    const float       threshold    = (argc >= 6) ? std::stof(argv[5]) : 0.0f;
+    const float       threshold    = (argc >= 6) ? std::stof(argv[5]) : 0.7f;
 
     // Parse --mode flag (can appear anywhere after the first 3 required args)
-    bool use_omp = false;
+    enum class Mode { SEQ, OMP, CUDA } mode = Mode::SEQ;
     for (int i = 4; i < argc; ++i) {
         if (std::string(argv[i]) == "--mode" && i + 1 < argc) {
-            use_omp = (std::string(argv[i + 1]) == "omp");
+            std::string m = argv[i + 1];
+            if (m == "omp")  mode = Mode::OMP;
+            else if (m == "cuda") mode = Mode::CUDA;
+            else              mode = Mode::SEQ;
         }
     }
-    std::cout << "Mode: " << (use_omp ? "OpenMP" : "sequential") << "\n";
+    const char* mode_str = (mode == Mode::OMP)  ? "OpenMP"
+                         : (mode == Mode::CUDA) ? "CUDA"
+                                                : "sequential";
+    std::cout << "Mode: " << mode_str << "\n";
 
     // Load SVM
     LinearSVM svm(weights_path, bias_path);
@@ -137,9 +144,9 @@ int main(int argc, char* argv[])
         // Start timing AFTER decode
         auto t0 = std::chrono::high_resolution_clock::now();
 
-        std::vector<BoundingBox> raw  = use_omp
-                                            ? sliding_window_omp(frame, svm, threshold)
-                                            : sliding_window(frame, svm, threshold);
+        std::vector<BoundingBox> raw  = (mode == Mode::OMP)  ? sliding_window_omp(frame, svm, threshold)
+                                         : (mode == Mode::CUDA) ? sliding_window_cuda(frame, svm, threshold)
+                                                                : sliding_window(frame, svm, threshold);
         std::vector<BoundingBox> kept = nms(raw);
 
         auto t1 = std::chrono::high_resolution_clock::now();
