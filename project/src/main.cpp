@@ -76,27 +76,28 @@ static void usage(const char* prog)
 
 int main(int argc, char* argv[])
 {
-    if (argc < 4) {
-        usage(argv[0]);
-        return 1;
-    }
-
-    const std::string input_path   = argv[1];
-    const std::string weights_path = argv[2];
-    const std::string bias_path    = argv[3];
-    const std::string output_path  = (argc >= 5) ? argv[4] : "";
-    const float       threshold    = (argc >= 6) ? std::stof(argv[5]) : 0.7f;
-
-    // Parse --mode flag (can appear anywhere after the first 3 required args)
+    // First pass: extract flags, collect positional args separately
     enum class Mode { SEQ, OMP, CUDA } mode = Mode::SEQ;
-    for (int i = 4; i < argc; ++i) {
-        if (std::string(argv[i]) == "--mode" && i + 1 < argc) {
-            std::string m = argv[i + 1];
-            if (m == "omp")  mode = Mode::OMP;
+    std::vector<std::string> pos;  // non-flag arguments
+    for (int i = 1; i < argc; ++i) {
+        std::string a = argv[i];
+        if (a == "--mode" && i + 1 < argc) {
+            std::string m = argv[++i];
+            if      (m == "omp")  mode = Mode::OMP;
             else if (m == "cuda") mode = Mode::CUDA;
-            else              mode = Mode::SEQ;
+            else                  mode = Mode::SEQ;
+        } else {
+            pos.push_back(a);
         }
     }
+
+    if (pos.size() < 3) { usage(argv[0]); return 1; }
+
+    const std::string input_path   = pos[0];
+    const std::string weights_path = pos[1];
+    const std::string bias_path    = pos[2];
+    const std::string output_path  = (pos.size() >= 4) ? pos[3] : "";
+    const float       threshold    = (pos.size() >= 5) ? std::stof(pos[4]) : 0.7f;
     const char* mode_str = (mode == Mode::OMP)  ? "OpenMP"
                          : (mode == Mode::CUDA) ? "CUDA"
                                                 : "sequential";

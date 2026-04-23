@@ -31,15 +31,19 @@ make -j$(nproc)
 
 ```bash
 # Extract crops and train the SVM
-python scripts/prepare_dataset.py --data_dir data/roboflow --out_dir data/crops
-python scripts/train_svm.py --crops_dir data/crops --out_dir .
-# Outputs: weights.bin, bias.txt
+python project/scripts/prepare_dataset.py --data_dir project/data/roboflow --out_dir project/data/crops
+python project/scripts/train_svm.py --crops_dir project/data/crops --out_dir project/models
+# Outputs: project/models/weights.bin, project/models/bias.txt
 ```
 
 ### 2. Run the detector
 
 ```bash
-./build/hog_detector <input_video_or_image> weights.bin bias.txt
+./build/hog_detector <input_video_or_image> project/models/weights.bin project/models/bias.txt
+# Optional flags:
+#   [output_path]       annotated video/image to write
+#   [threshold]         SVM decision threshold (default 0.7)
+#   --mode seq|omp|cuda implementation to use (default seq)
 ```
 
 ### 3. Run correctness validation
@@ -58,7 +62,8 @@ Then compare against the C++ implementation (run from the repo root):
 ./build/test_hog project/scripts/patch.png project/scripts/ref_feat.bin
 
 # HOG + SVM decision check
-./build/test_hog project/scripts/patch.png project/scripts/ref_feat.bin weights.bin bias.txt
+./build/test_hog project/scripts/patch.png project/scripts/ref_feat.bin \
+    project/models/weights.bin project/models/bias.txt
 ```
 
 Expected output: both `max_abs_diff < 1e-3` (tight) and `< 1e-2` (loose) should print `[PASS]`.
