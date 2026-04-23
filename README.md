@@ -44,10 +44,23 @@ python scripts/train_svm.py --crops_dir data/crops --out_dir .
 
 ### 3. Run correctness validation
 
+Generate a 64×64 reference patch and its Python HOG feature vector:
+
 ```bash
-./build/test_hog weights.bin bias.txt <test_patch.png>
-# Checks max absolute diff between C++ and Python HOG vectors
-# Expected tolerance: <= 1e-2 (due to float32 rounding after L2-Hys)
+# Produce project/scripts/ref_feat.bin from project/scripts/patch.png
+python project/scripts/generate_ref_bin.py
 ```
+
+Then compare against the C++ implementation (run from the repo root):
+
+```bash
+# HOG-only check
+./build/test_hog project/scripts/patch.png project/scripts/ref_feat.bin
+
+# HOG + SVM decision check
+./build/test_hog project/scripts/patch.png project/scripts/ref_feat.bin weights.bin bias.txt
+```
+
+Expected output: both `max_abs_diff < 1e-3` (tight) and `< 1e-2` (loose) should print `[PASS]`.
 
 

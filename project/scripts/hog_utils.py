@@ -44,9 +44,7 @@ def compute_gradients(gray: np.ndarray):
     gy[-1, :]   = gray[-1, :] - gray[-2, :]
 
     mag = np.sqrt(gx * gx + gy * gy)
-    ori = np.degrees(np.arctan2(np.abs(gy), np.abs(gx)))  # unsigned: fold to [0, 90]
-    # arctan2(|gy|, |gx|) gives [0,90]; remap to [0,180) using the sign of gy vs gx
-    # Standard unsigned HOG: use arctan2 of the full vectors then mod 180
+    # Unsigned HOG: treat opposite gradient directions as equivalent → fold to [0, 180)
     ori = np.degrees(np.arctan2(gy, gx)) % 180.0
 
     return mag.astype(np.float32), ori.astype(np.float32)
