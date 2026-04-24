@@ -2,6 +2,7 @@
 #include <chrono>
 #include <cmath>
 #include <cstdio>
+#include <fstream>
 #include <iomanip>
 #include <iostream>
 #include <numeric>
@@ -38,7 +39,44 @@ static void draw_boxes(cv::Mat& img, const std::vector<BoundingBox>& boxes)
     }
 }
 
-static void print_stats(const std::vector<double>& latencies_ms)
+static std::string derive_csv_path(const std::string& output_path, const std::string& mode_str)
+{
+    if (!output_path.empty()) {
+        auto dot = output_path.rfind('.');
+        std::string base = (dot != std::string::npos) ? output_path.substr(0, dot) : output_path;
+        return base + "_" + mode_str + "_results.csv";
+    }
+    return mode_str + "_results.csv";
+}
+
+struct FrameRecord {
+    int frame;
+    std::size_t raw;
+    std::size_t kept;
+    double latency_ms;
+};
+
+static void write_results(const std::string& csv_path,
+                          const std::string& mode_str,
+                          const std::vector<FrameRecord>& records)
+{
+    std::ofstream f(csv_path);
+    if (!f) {
+        std::cerr << "WARNING: could not write results to " << csv_path << "\n";
+        return;
+    }
+
+    f << "mode,frame,raw_detections,kept_detections,latency_ms\n";
+    for (const auto& r : records)
+        f << mode_str << "," << r.frame << "," << r.raw << "," << r.kept << ","
+          << std::fixed << std::setprecision(4) << r.latency_ms << "\n";
+
+    std::cout << "Saved per-frame results: " << csv_path << "\n";
+}
+
+static void print_stats(const std::vector<double>& latencies_ms,
+                        const std::string& csv_path,
+                        const std::string& mode_str)
 {
     if (latencies_ms.empty()) return;
 
@@ -59,6 +97,18 @@ static void print_stats(const std::vector<double>& latencies_ms)
     std::cout << "  p99 latency   : " << p99  << " ms\n";
     std::cout << "  FPS           : " << fps  << "\n";
     std::cout << "───────────────────────────────────────────────────\n";
+
+    // Append summary block to the CSV
+    std::ofstream f(csv_path, std::ios::app);
+    if (!f) return;
+    f << "\nsummary_metric,value\n";
+    f << std::fixed << std::setprecision(4);
+    f << "mode," << mode_str << "\n";
+    f << "frames," << sorted.size() << "\n";
+    f << "avg_latency_ms," << avg << "\n";
+    f << "p50_latency_ms," << p50 << "\n";
+    f << "p99_latency_ms," << p99 << "\n";
+    f << "fps," << fps << "\n";
 }
 
 static void usage(const char* prog)
@@ -135,9 +185,13 @@ int main(int argc, char* argv[])
             std::cerr << "Warning: could not open output writer for " << output_path << "\n";
     }
 
+    const std::string csv_path = derive_csv_path(output_path, mode_str);
+
     // Process frames
     std::vector<double> latencies;
+    std::vector<FrameRecord> records;
     latencies.reserve(BENCHMARK_FRAMES);
+    records.reserve(BENCHMARK_FRAMES);
 
     int frame_count = 0;
 
@@ -153,6 +207,7 @@ int main(int argc, char* argv[])
         auto t1 = std::chrono::high_resolution_clock::now();
         double ms = std::chrono::duration<double, std::milli>(t1 - t0).count();
         latencies.push_back(ms);
+        records.push_back({frame_count, raw.size(), kept.size(), ms});
 
         // Draw and write output
         if (!output_path.empty() || frame_count % 30 == 0) {
@@ -196,6 +251,7 @@ int main(int argc, char* argv[])
         }
     }
 
-    print_stats(latencies);
+    write_results(csv_path, mode_str, records);
+    print_stats(latencies, csv_path, mode_str);
     return 0;
 }
