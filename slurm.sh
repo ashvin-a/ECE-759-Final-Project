@@ -33,6 +33,16 @@ echo " OMP     : $OMP_NUM_THREADS threads"
 echo " GPU     : $(nvidia-smi --query-gpu=name --format=csv,noheader 2>/dev/null || echo 'N/A')"
 echo "========================================================"
 
+# -- Build --------------------------------------------------------------------
+echo ""
+echo "[0/3] Building with CMake..."
+mkdir -p build
+cd build
+cmake .. -DCMAKE_BUILD_TYPE=Release
+make -j"$SLURM_CPUS_PER_TASK"
+cd ..
+echo "Build done."
+
 # -- Sequential ---------------------------------------------------------------
 echo ""
 echo "[1/3] Running sequential..."
