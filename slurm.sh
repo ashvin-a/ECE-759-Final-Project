@@ -10,29 +10,21 @@
 #SBATCH --time=0-00:10:00
 #SBATCH --mem=8G
 
-# ---------------------------------------------------------------------------
-# HOG+SVM Rock Detector — Sequential / OpenMP / CUDA
-# Usage: sbatch slurm.sh [input_image]   (default: input_image.png)
-# ---------------------------------------------------------------------------
+cd $SLURM_SUBMIT_DIR
 
-# -- Modules ------------------------------------------------------------------
+# -- Modules & Environment ----------------------------------------------------
 module load gcc/12.2.0
-module load cmake
 module load nvidia/cuda/12.2.0
 module load conda/miniforge/24.3.0
 
-# `conda activate` requires shell functions — source the init script explicitly
-# shellcheck disable=SC1091
 source "$(conda info --base)/etc/profile.d/conda.sh"
-
-# Activate conda env (create it first if needed:
-conda create -n hog_env -c conda-forge opencv -y
 conda activate hog_env
-export OpenCV_DIR="$CONDA_PREFIX/lib/cmake/opencv4"
 
-# Ensure nvcc is visible to CMake
-export CUDAToolkit_ROOT="${CUDA_HOME:-${CUDA_PATH:-/usr/local/cuda}}"
-export PATH="$CUDAToolkit_ROOT/bin:$PATH"
+# Require a pre-built binary — run build.sh on the login node first.
+if [[ ! -x ./build/hog_detector ]]; then
+    echo "ERROR: ./build/hog_detector not found. Run 'bash build.sh' on the login node first." >&2
+    exit 1
+fi
 
 # ---------------------------------------------------------------------------
 
@@ -43,8 +35,10 @@ RESULTS_DIR="project/results"
 
 mkdir -p logs "$RESULTS_DIR"
 
-# OpenMP thread count matches the allocated CPUs
+# Strictly bind OpenMP threads to the Slurm allocation
 export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
+export OMP_PROC_BIND=true
+export OMP_PLACES=cores
 
 echo "========================================================"
 echo " Job     : $SLURM_JOB_ID"
@@ -52,20 +46,7 @@ echo " Node    : $(hostname)"
 echo " Input   : $INPUT"
 echo " OMP     : $OMP_NUM_THREADS threads"
 echo " GPU     : $(nvidia-smi --query-gpu=name --format=csv,noheader 2>/dev/null || echo 'N/A')"
-echo " OpenCV  : $OpenCV_DIR"
 echo "========================================================"
-
-# -- Build --------------------------------------------------------------------
-echo ""
-echo "[0/3] Building with CMake..."
-mkdir -p build
-cd build
-cmake .. -DCMAKE_BUILD_TYPE=Release \
-         -DOpenCV_DIR="$OpenCV_DIR" \
-         -DCUDAToolkit_ROOT="$CUDAToolkit_ROOT"
-make -j"$SLURM_CPUS_PER_TASK"
-cd ..
-echo "Build done."
 
 # -- Sequential ---------------------------------------------------------------
 echo ""
