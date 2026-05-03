@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
-# Run this once on the SLURM login node before submitting slurm.sh:
-#   bash build.sh
+# DO NOT run this script in sbatch. Run each line of command, one by one.
 set -euo pipefail
 
 # -- Modules ------------------------------------------------------------------
@@ -9,14 +8,11 @@ module load nvidia/cuda/12.2.0
 module load conda/miniforge/24.3.0
 
 # -- Conda env ----------------------------------------------------------------
-# conda create -n hog_env -c conda-forge opencv -y
+conda create -n hog_env -c conda-forge
 source "$(conda info --base)/etc/profile.d/conda.sh"
 conda activate hog_env
 
-# Install conda-native cmake and a modern libstdc++ into the env so we never
-# touch the system cmake (which requires GLIBCXX_3.4.32 / CXXABI_1.3.15,
-# i.e. GCC 13+, unavailable on this cluster).
-conda install -c conda-forge libstdcxx-ng cmake -y
+conda install -c conda-forge libstdcxx-ng cmake opencv -y
 
 # -- Build --------------------------------------------------------------------
 mkdir -p build

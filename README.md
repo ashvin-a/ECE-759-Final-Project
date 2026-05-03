@@ -11,12 +11,16 @@ Parallelized object detection pipeline using Histogram of Oriented Gradients (HO
 ```bash
 git clone git@github.com:ashvin-a/FinalProject.git
 cd FinalProject/
-mkdir build && cd build
-cmake ..
+module load gcc/12.2.0 nvidia/cuda/12.2.0 conda/miniforge/24.3.0
+conda create -n hog_env -c conda-forge
+source "$(conda info --base)/etc/profile.d/conda.sh"
+conda activate hog_env
+conda install -c conda-forge libstdcxx-ng cmake opencv -y
+mkdir -p build && cd build
+cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="$CONDA_PREFIX" \
+    -DCMAKE_EXE_LINKER_FLAGS="-L$CONDA_PREFIX/lib -Wl,-rpath,$CONDA_PREFIX/lib"
 make -j$(nproc)
 cd ../
-python3 -m venv env && source env/bin/activate
-pip install -r requirements.txt
 ```
 
 ---
@@ -24,6 +28,12 @@ pip install -r requirements.txt
 ## Rock Detection
 
 Run the detector on an input image using CUDA, OpenMP, or Sequential mode:
+
+```bash
+sbatch slurm.sh
+```
+
+To run a specific mode manually:
 
 ```bash
 # CUDA
@@ -48,16 +58,19 @@ Each run writes a results CSV alongside the output path with per-frame columns (
 
 ## Profiling
 
-Build with gprof instrumentation and run:
+Rebuild with gprof instrumentation, then submit via sbatch:
 
 ```bash
 cd build
-cmake .. -DENABLE_PROFILING=ON
+cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="$CONDA_PREFIX" \
+    -DCMAKE_EXE_LINKER_FLAGS="-L$CONDA_PREFIX/lib -Wl,-rpath,$CONDA_PREFIX/lib" \
+    -DENABLE_PROFILING=ON
 make -j$(nproc)
 cd ../
-./build/hog_detector input_image.png project/models/weights.bin project/models/bias.txt project/results/output_cuda.png --mode cuda
-gprof ./build/hog_detector gmon.out > profile.txt
+sbatch run_prof.sh
 ```
+
+The job runs the sequential detector to generate `gmon.out`, then writes the gprof report to `profile.txt`.
 
 Note: `-pg` instruments only the C++ host code. For GPU kernel profiling use `ncu` or `nvprof`.
 
